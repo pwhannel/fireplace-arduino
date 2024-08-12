@@ -1,0 +1,136 @@
+#include <WiFi.h>
+#include <WiFiUdp.h>
+#include <WiFiClient.h>
+#include <WiFiServer.h>
+
+#include <SPI.h>
+#include <EthernetClient.h>
+#include <Ethernet.h>
+#include <Dhcp.h>
+#include <EthernetServer.h>
+#include <Dns.h>
+#include <EthernetUdp.h>
+
+byte mac[] = { 0xFA, 0x75, 0xC5, 0x27, 0xE4, 0xEA }; // byte mac address
+byte ip[] = { 10, 0, 1, 90 }; // ip
+byte gateway[] = { 10, 0, 1, 1 }; // router
+byte subnet[] = { 255, 255, 255, 0 }; //subnet mask
+EthernetServer server(80); //server port
+
+String readString; 
+
+void setup() {
+
+    // Pin 1 unused, relay has become inoperable.  Thus fireplaces are shifted 1 number from the HTTP requests that are sent to control them.
+  pinMode(2, OUTPUT); //living room fireplace
+  pinMode(3, OUTPUT); //dining room fireplace
+  pinMode(4, OUTPUT); //second floor fireplace
+
+  Ethernet.begin(mac, ip, gateway, gateway, subnet);
+  server.begin();
+  Serial.begin(9600); 
+
+}
+
+void loop() {
+    // Create a client connection
+  EthernetClient client = server.available();
+  if (client) {
+    while (client.connected()) {
+      if (client.available()) {
+        char c = client.read();
+
+        //read char by char HTTP request
+        if (readString.length() < 100) {
+
+          //store characters to string 
+          readString += c; 
+          //Serial.print(c);
+        } 
+
+        //if HTTP request has ended
+        if (c == '\n') {
+
+          ///////////////
+          Serial.println(readString); //print to serial monitor for debuging 
+
+          client.println("HTTP/1.1 200 OK"); //send new page
+          client.println("Content-Type: text/html");
+          client.println();
+
+          client.println("<HTML>");
+          client.println("<HEAD>");
+          client.println("<TITLE>Compton-Wood House Fireplace Controller</TITLE>");
+          client.println("</HEAD>");
+          client.println("<BODY>");
+
+          client.println("<H1>FIREPLACE CONTROL</H1>");
+          
+          client.println("<a href=\"/?1on\">1 ON</a>"); 
+          client.println("<a href=\"/?1off\">1 OFF</a>"); 
+          client.println("<a href=\"/?2on\">2 ON</a>"); 
+          client.println("<a href=\"/?2off\">2 OFF</a>"); 
+          client.println("<a href=\"/?3on\">3 ON</a>"); 
+          client.println("<a href=\"/?3off\">3 OFF</a>"); 
+
+          client.println("</BODY>");
+          client.println("</HTML>");
+
+          delay(1);
+          //stopping client
+          client.stop();
+
+          // ****** Fireplace Control Action ******
+          if(readString.startsWith("GET /?1on"))
+          {
+            Serial.println(readString);
+            
+            digitalWrite(2, LOW);    // turn living room fireplace on
+            Serial.println("Fireplace 1 On");
+
+          }
+          else if(readString.startsWith("GET /?1off"))
+          {
+            Serial.println(readString);
+            digitalWrite(2, HIGH);    // turn living room fireplace off
+            Serial.println("Fireplace 1 Off");
+          }
+
+           else if(readString.startsWith("GET /?2on"))
+          {
+            Serial.println(readString);
+            
+            digitalWrite(3, LOW);    // turn dining room fireplace on
+            Serial.println("Fireplace 2 On");
+
+          }
+          else if(readString.startsWith("GET /?2off"))
+          {
+            Serial.println(readString);
+            digitalWrite(3, HIGH);    // turn living room fireplace off
+            Serial.println("Fireplace 2 Off");
+          }
+
+          else if(readString.startsWith("GET /?3on"))
+          {
+            Serial.println(readString);
+            
+            digitalWrite(4, LOW);    // turn living room fireplace on
+            Serial.println("Fireplace 3 On");
+
+          }
+          else if(readString.startsWith("GET /?3off"))
+          {
+            Serial.println(readString);
+            digitalWrite(4, HIGH);    // turn living room fireplace off
+            Serial.println("Fireplace 3 Off");
+          }
+                    
+          //clearing string for next read
+          readString="";
+
+        }
+      }
+    }
+  }
+}
